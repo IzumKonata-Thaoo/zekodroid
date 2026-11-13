@@ -87,6 +87,7 @@ public sealed class Hub
     public async Task RunAsync(CancellationToken ct)
     {
         _listener.Start();
+        _ = Task.Run(() => SweepAsync(ct), ct);
         Log.Info($"tcp listener 0.0.0.0:{((IPEndPoint)_listener.LocalEndpoint).Port} (psk={(Psk is null ? "off" : "aes-256-gcm")})");
         while (!ct.IsCancellationRequested)
         {
@@ -95,6 +96,27 @@ public sealed class Hub
             catch (OperationCanceledException) { break; }
             catch (Exception ex) { Log.Warn("accept: " + ex.Message); continue; }
             _ = Task.Run(() => HandleAsync(tcp, ct), ct);
+        }
+    }
+
+    /// <summary>Đóng session chết: agent ping 25s/lần, quá 150s không thấy frame → ngắt.</summary>
+    async Task SweepAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(30_000, ct);
+                var now = DateTime.UtcNow;
+                foreach (var s in _byHwid.Values.ToList())
+                {
+                    if ((now - s.LastSeen).TotalSeconds < 150) continue;
+                    Log.Warn($"agent {s.Hwid[..Math.Min(8, s.Hwid.Length)]} im 150s -> dong session");
+                    try { s.Tcp.Close(); } catch { }
+                }
+            }
+            catch (OperationCanceledException) { break; }
+            catch (Exception ex) { Log.Warn("sweep: " + ex.Message); }
         }
     }
 
