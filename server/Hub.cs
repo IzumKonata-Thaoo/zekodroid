@@ -15,6 +15,8 @@ public sealed class AgentSession
     public DateTime ConnectedAt { get; } = DateTime.UtcNow;
     public DateTime LastSeen { get; set; } = DateTime.UtcNow;
     public JsonObject Info { get; set; } = new();
+    /// <summary>Khoá dùng cho session này (null = plaintext).</summary>
+    public byte[]? Key { get; set; } = Hub.Psk;
     public bool Alive => Tcp.Connected;
 
     internal readonly SemaphoreSlim WriteLock = new(1, 1);
@@ -26,7 +28,7 @@ public sealed class AgentSession
         try
         {
             if (!Tcp.Connected) throw new IOException("agent offline");
-            await Proto.WriteFrameAsync(Stream, obj, Hub.Psk, ct);
+            await Proto.WriteFrameAsync(Stream, obj, Key, ct);
         }
         finally { WriteLock.Release(); }
     }
@@ -117,6 +119,7 @@ public sealed class Hub
                     if (obj is not null)
                     {
                         sessionKey = null;
+                        if (session is not null) session.Key = null;
                         obj = Proto.Decode(payload, null);
                     }
                     if (obj is not null && (DateTime.UtcNow - _lastHandshakeWarn).TotalSeconds > 5)
@@ -146,7 +149,8 @@ public sealed class Hub
                         Tcp = tcp,
                         Stream = stream,
                         RemoteIp = ip,
-                        Info = obj["info"] as JsonObject ?? new JsonObject()
+                        Info = obj["info"] as JsonObject ?? new JsonObject(),
+                        Key = sessionKey
                     };
                     _byHwid[hwid] = session;
                     Store.UpsertAgent(session);
