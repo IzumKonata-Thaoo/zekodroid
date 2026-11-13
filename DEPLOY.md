@@ -144,3 +144,15 @@ config khác — nhưng bình thường chỉ cần dùng **Builder** trên pane
 - Bật `ZK_PSK` (script đã sinh sẵn) để traffic agent ↔ server được mã hoá AES-256-GCM.
 - `server/builder/zeko.pfx` là khoá ký APK — **không commit**, tự sinh lại ở mỗi máy.
 - Cổng `7878` nên giới hạn IP nếu biết dải mạng di động hay dùng.
+
+---
+
+## 9. Sự cố thường gặp
+
+| Lỗi | Nguyên nhân | Fix |
+|---|---|---|
+| `System.DllNotFoundException: e_sqlite3` | bản cũ publish `PublishSingleFile` thiếu native lib | `cd /opt/zekodroid-src && sudo git pull && sudo bash bootstrap.sh` (bản mới publish dạng folder, có `libe_sqlite3.so`) |
+| `service khong chay` | xem `journalctl -u zekodroid -n 50` | |
+| Panel mở nhưng 502/timeout | ufw chặn 8080 | `sudo ufw allow 8080/tcp` |
+| Agent không kết nối | sai host/port/PSK trong APK, hoặc 7878 bị chặn | build lại APK từ panel với đúng IP + PSK |
+| Quên mật khẩu admin | `users` rỗng → tạo lại từ env | `sudo rm /opt/zekodroid/zekorat.db && sudo systemctl restart zekodroid` (mất dữ liệu) |

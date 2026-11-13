@@ -36,17 +36,19 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 # ── 3. build server (self-contained linux-x64) ──────────────────
 say "build server (lan dau ~1-2 phut)"
 cd "$SRC_DIR/server"
-dotnet publish -c Release -r linux-x64 --self-contained true \
-  -p:PublishSingleFile=true --nologo -v q >/dev/null
+dotnet publish -c Release -r linux-x64 --self-contained true --nologo -v q >/dev/null
 PUBLISH="$SRC_DIR/server/bin/Release/net9.0/linux-x64/publish"
 [ -f "$PUBLISH/ZekoRat.Server" ] || die "build that bai, khong thay ZekoRat.Server"
+ls "$PUBLISH"/libe_sqlite3.so "$PUBLISH"/e_sqlite3.so >/dev/null 2>&1 || say "canh bao: khong thay e_sqlite3 (sqlite co the loi)"
 
 # ── 4. user + thư mục + binary ──────────────────────────────────
 say "cai dat vao $APP_DIR"
 id -u zekodroid >/dev/null 2>&1 || useradd -r -s /usr/sbin/nologin -d "$APP_DIR" zekodroid
+systemctl stop "$SVC" 2>/dev/null || true
 mkdir -p "$APP_DIR/builder"
-cp "$PUBLISH/ZekoRat.Server" "$APP_DIR/"
-chmod +x "$APP_DIR/ZekoRat.Server"
+rm -rf "$APP_DIR/app"
+cp -r "$PUBLISH" "$APP_DIR/app"
+chmod +x "$APP_DIR/app/ZekoRat.Server"
 
 # base APK cho Builder (nếu repo có)
 if [ -f "$SRC_DIR/server/builder/zk_base.apk" ]; then
@@ -74,6 +76,8 @@ else
   # shellcheck disable=SC1090
   . "$ENV_FILE"
 fi
+grep -q '^ZK_BASE_APK=' "$ENV_FILE" 2>/dev/null || \
+  echo "ZK_BASE_APK=$APP_DIR/builder/zk_base.apk" >> "$ENV_FILE"
 chown -R zekodroid:zekodroid "$APP_DIR"
 
 # ── 5. systemd ──────────────────────────────────────────────────
@@ -88,9 +92,9 @@ Wants=network-online.target
 Type=simple
 User=zekodroid
 Group=zekodroid
-WorkingDirectory=$APP_DIR
+WorkingDirectory=$APP_DIR/app
 EnvironmentFile=$ENV_FILE
-ExecStart=$APP_DIR/ZekoRat.Server
+ExecStart=$APP_DIR/app/ZekoRat.Server
 Restart=always
 RestartSec=3
 LimitNOFILE=65535

@@ -7,6 +7,8 @@
     <AssemblyName>ZekoRat.Server</AssemblyName>
     <RootNamespace>ZekoRat.Server</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- single-file: nhung + extract e_sqlite3.so khi chay -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>
