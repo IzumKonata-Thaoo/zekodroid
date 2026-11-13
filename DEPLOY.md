@@ -38,10 +38,20 @@ PSK       : yyyyyyyyyyyyyyyyyyyyyyyy
 
 Mở `http://IP:8080` → đăng nhập.
 
-**Nếu repo để private**, dùng token:
+**Repo này PRIVATE**, nên clone cần auth. Chọn 1 trong 3:
 
 ```bash
+# Cách 1: token (tạo ở github.com/settings/tokens, chỉ cần scope "repo")
 sudo git clone https://<TOKEN>@github.com/IzumKonata-Thaoo/zekodroid.git /opt/zekodroid-src
+
+# Cách 2: dùng gh cli (đăng nhập 1 lần)
+sudo apt-get install -y gh && gh auth login
+gh repo clone IzumKonata-Thaoo/zekodroid /opt/zekodroid-src
+
+# Cách 3: tải zip bằng token rồi giải nén
+curl -L -H "Authorization: Bearer <TOKEN>" \
+  https://api.github.com/repos/IzumKonata-Thaoo/zekodroid/zipball/main -o zk.zip \
+  && unzip -q zk.zip -d /tmp/zk && mv /tmp/zk/* /opt/zekodroid-src
 ```
 
 ---
@@ -106,7 +116,7 @@ systemctl restart zekodroid       # restart sau khi đổi env
 Tạo thêm user: panel **⚙ Quản trị → Users** (role `admin` / `operator` / `viewer`).
 
 Lưu ý: tài khoản admin đầu tiên chỉ tạo 1 lần khi bảng `users` rỗng
-(lấy từ `ZK_USER`/`ZK_PASS`). Muốn reset: `rm /opt/zekoroid/zekorat.db` rồi restart.
+(lấy từ `ZK_USER`/`ZK_PASS`). Muốn reset: `rm /opt/zekodroid/zekorat.db` rồi restart.
 
 ---
 
