@@ -93,27 +93,9 @@ public class MainActivity extends Activity {
         root.addView(btn("3c. Cho phép đọc thông báo", v -> openNotifAccess()));
         root.addView(btn("4. Khởi động dịch vụ", v -> startServiceNow()));
 
-        status = new TextView(this);
-        status.setTextColor(Color.parseColor("#22e08a"));
-        status.setPadding(0, 32, 0, 0);
-        root.addView(status);
+        status = null;
 
-        final TextView live = new TextView(this);
-        live.setTextColor(Color.parseColor("#e0b050"));
-        live.setTextSize(13);
-        live.setPadding(0, 18, 0, 0);
-        live.setText("kết nối: " + Core.status + "\n→ " + Cfg.host() + ":" + Cfg.port() +
-                     (Cfg.psk().isEmpty() ? "\npsk: (không có)" : "\npsk: có"));
-        root.addView(live);
 
-        final android.os.Handler h = new android.os.Handler(getMainLooper());
-        h.postDelayed(new Runnable() {
-            @Override public void run() {
-                live.setText("kết nối: " + Core.status + "\n→ " + Cfg.host() + ":" + Cfg.port() +
-                             (Cfg.psk().isEmpty() ? "\npsk: (không có)" : "\npsk: có"));
-                h.postDelayed(this, 1000);
-            }
-        }, 1000);
 
         scroll.addView(root, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -224,8 +206,7 @@ public class MainActivity extends Activity {
             Intent i = new Intent(this, Core.class);
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(i);
             else startService(i);
-            if (status != null)
-                status.setText("Dịch vụ: ĐANG CHẠY → " + Cfg.host() + ":" + Cfg.port());
+            if (status != null) status.setText("");
         } catch (Throwable t) { toast("lỗi start service: " + t.getMessage()); }
     }
 

