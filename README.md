@@ -167,3 +167,14 @@ Panel: nút **⚙ Quản trị** → 3 tab Users / Sessions / Logs.
 Chi tiết: `docs/RBAC.md`.
 
 Tài khoản admin đầu tiên lấy từ `ZK_USER` / `ZK_PASS` khi bảng `users` còn rỗng.
+## Cài nhanh trên VPS
+
+```bash
+sudo apt-get update && sudo apt-get install -y git curl unzip \
+&& sudo git clone https://github.com/IzumKonata-Thaoo/zekodroid.git /opt/zekodroid-src \
+&& cd /opt/zekodroid-src && sudo bash bootstrap.sh
+```
+
+In ra URL panel + mật khẩu admin + PSK. Sau đó vào panel → **Builder** → nhập IP VPS + port 7878 + PSK → tải APK.
+
+Chi tiết từng bước: [DEPLOY.md](DEPLOY.md)

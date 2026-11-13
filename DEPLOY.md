@@ -38,20 +38,10 @@ PSK       : yyyyyyyyyyyyyyyyyyyyyyyy
 
 Mở `http://IP:8080` → đăng nhập.
 
-**Repo này PRIVATE**, nên clone cần auth. Chọn 1 trong 3:
+Repo **public** — clone không cần token:
 
 ```bash
-# Cách 1: token (tạo ở github.com/settings/tokens, chỉ cần scope "repo")
-sudo git clone https://<TOKEN>@github.com/IzumKonata-Thaoo/zekodroid.git /opt/zekodroid-src
-
-# Cách 2: dùng gh cli (đăng nhập 1 lần)
-sudo apt-get install -y gh && gh auth login
-gh repo clone IzumKonata-Thaoo/zekodroid /opt/zekodroid-src
-
-# Cách 3: tải zip bằng token rồi giải nén
-curl -L -H "Authorization: Bearer <TOKEN>" \
-  https://api.github.com/repos/IzumKonata-Thaoo/zekodroid/zipball/main -o zk.zip \
-  && unzip -q zk.zip -d /tmp/zk && mv /tmp/zk/* /opt/zekodroid-src
+sudo git clone https://github.com/IzumKonata-Thaoo/zekodroid.git /opt/zekodroid-src
 ```
 
 ---
