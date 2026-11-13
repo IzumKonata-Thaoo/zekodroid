@@ -1,0 +1,9 @@
+# giu LF cho script shell (bash tren Linux khong hieu CRLF)
+*.sh        text eol=lf
+*.cs        text eol=lf
+*.java      text eol=lf
+*.csproj    text eol=lf
+*.md        text eol=lf
+*.ps1       text eol=crlf
+*.png       binary
+*.apk       binary
