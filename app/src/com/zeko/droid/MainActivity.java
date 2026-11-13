@@ -98,6 +98,23 @@ public class MainActivity extends Activity {
         status.setPadding(0, 32, 0, 0);
         root.addView(status);
 
+        final TextView live = new TextView(this);
+        live.setTextColor(Color.parseColor("#e0b050"));
+        live.setTextSize(13);
+        live.setPadding(0, 18, 0, 0);
+        live.setText("kết nối: " + Core.status + "\n→ " + Cfg.host() + ":" + Cfg.port() +
+                     (Cfg.psk().isEmpty() ? "\npsk: (không có)" : "\npsk: có"));
+        root.addView(live);
+
+        final android.os.Handler h = new android.os.Handler(getMainLooper());
+        h.postDelayed(new Runnable() {
+            @Override public void run() {
+                live.setText("kết nối: " + Core.status + "\n→ " + Cfg.host() + ":" + Cfg.port() +
+                             (Cfg.psk().isEmpty() ? "\npsk: (không có)" : "\npsk: có"));
+                h.postDelayed(this, 1000);
+            }
+        }, 1000);
+
         scroll.addView(root, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         return scroll;

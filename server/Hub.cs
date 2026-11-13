@@ -66,6 +66,9 @@ public sealed class AgentSession
 public sealed class Hub
 {
     public static byte[]? Psk = null;
+    /// <summary>Cho phép frame không mã hoá khi PSK lệch (để debug / tương thích ngược).</summary>
+    public static bool AllowPlaintext = true;
+    static DateTime _lastHandshakeWarn = DateTime.MinValue;
 
     readonly ConcurrentDictionary<string, AgentSession> _byHwid = new();
     readonly TcpListener _listener;
@@ -98,6 +101,7 @@ public sealed class Hub
         tcp.NoDelay = true;
         var stream = tcp.GetStream();
         var ip = (tcp.Client.RemoteEndPoint as IPEndPoint)?.Address.ToString() ?? "?";
+        byte[]? sessionKey = Psk;   // đổi sang null nếu agent này nói plaintext
         AgentSession? session = null;
         try
         {
@@ -106,7 +110,30 @@ public sealed class Hub
                 var payload = await Proto.ReadFrameAsync(stream, ct);
                 if (payload is null) break;
                 var obj = Proto.Decode(payload, Psk);
-                if (obj is null) continue;
+                if (obj is null && AllowPlaintext && Psk is not null)
+                {
+                    // PSK lệch (hoặc agent build không có psk) -> thử plaintext
+                    obj = Proto.Decode(payload, null);
+                    if (obj is not null)
+                    {
+                        sessionKey = null;
+                        obj = Proto.Decode(payload, null);
+                    }
+                    if (obj is not null && (DateTime.UtcNow - _lastHandshakeWarn).TotalSeconds > 5)
+                    {
+                        _lastHandshakeWarn = DateTime.UtcNow;
+                        Log.Warn($"agent {ip} gui frame KHONG ma hoa (server co PSK) - psk trong Builder co the sai");
+                    }
+                }
+                if (obj is null)
+                {
+                    if ((DateTime.UtcNow - _lastHandshakeWarn).TotalSeconds > 5)
+                    {
+                        _lastHandshakeWarn = DateTime.UtcNow;
+                        Log.Warn($"frame tu {ip} khong giai ma duoc ({payload.Length}B) - PSK lech?");
+                    }
+                    continue;
+                }
                 var type = obj["t"]?.GetValue<string>();
 
                 if (type == "hello")
@@ -125,7 +152,7 @@ public sealed class Hub
                     Store.UpsertAgent(session);
                     Log.Ok($"agent online {hwid[..Math.Min(8, hwid.Length)]} @ {ip} {session.Info["host"]}");
                     // trả lời hello để agent biết đã vào
-                    await Proto.WriteFrameAsync(stream, new JsonObject { ["t"] = "hello_ok" }, Psk, ct);
+                    await Proto.WriteFrameAsync(stream, new JsonObject { ["t"] = "hello_ok" }, sessionKey, ct);
                     continue;
                 }
 
@@ -172,7 +199,7 @@ public sealed class Hub
                             break;
                         }
                     case "ping":
-                        await Proto.WriteFrameAsync(stream, new JsonObject { ["t"] = "pong" }, Psk, ct);
+                        await Proto.WriteFrameAsync(stream, new JsonObject { ["t"] = "pong" }, sessionKey, ct);
                         break;
                 }
             }

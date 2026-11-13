@@ -13,6 +13,8 @@ if (string.IsNullOrWhiteSpace(adminPass))
     adminPass = Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant();
     Console.WriteLine($"== mat khau dashboard duoc sinh: {adminPass} (dat ZK_PASS de tu chon) ==");
 }
+var allowPlain = (Environment.GetEnvironmentVariable("ZK_ALLOW_PLAINTEXT") ?? "1") != "0";
+Hub.AllowPlaintext = allowPlain;
 var pskRaw = Environment.GetEnvironmentVariable("ZK_PSK");
 if (!string.IsNullOrWhiteSpace(pskRaw))
     Hub.Psk = SHA256.HashData(Encoding.UTF8.GetBytes(pskRaw));
