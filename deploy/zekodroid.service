@@ -1,0 +1,21 @@
+[Unit]
+Description=ZekoDroid C2 server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zekodroid
+Group=zekodroid
+WorkingDirectory=/opt/zekodroid
+EnvironmentFile=/etc/zekodroid.env
+ExecStart=/opt/zekodroid/ZekoRat.Server
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

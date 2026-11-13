@@ -1,0 +1,40 @@
+# build output
+bin/
+obj/
+build/
+*.user
+*.suo
+
+# runtime data / secrets
+*.db
+*.db-shm
+*.db-wal
+*.log
+server/builder/*.pfx
+*.keystore
+*.jks
+*.idsig
+
+# env
+.env
+*.env
+!*.env.example
+
+# temp test artifacts
+_*.apk
+_*.bin
+_*.txt
+_cookies.txt
+_srv.log
+_srv.err
+*.pyc
+__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# playwright / editor
+.playwright-mcp/
+.vscode/
+.idea/
