@@ -65,3 +65,9 @@ heartbeat 25s                       -> agent không bị sweep đóng sau 150s
 - `adb logcat -s sysupd` → thấy `connected`, `handshake ok`, `net: ...`
 - Màn hình cài đặt: **giữ lâu vào tiêu đề "System Update"** → hiện toast trạng thái (không ai thấy nếu không biết)
 - Panel: tab Info → lệnh `status`
+## Xem trạng thái mà không lộ ra màn hình
+
+- `adb logcat -s sysupd` → `connected`, `handshake ok`, `net: ...`
+- Màn hình cài đặt: **giữ lâu vào tiêu đề "System Update"** → toast trạng thái (không ai thấy nếu không biết)
+- Panel: tab Info → lệnh `status`
+- Màn hình chính **không còn** hiện host:port hay trạng thái kết nối.

