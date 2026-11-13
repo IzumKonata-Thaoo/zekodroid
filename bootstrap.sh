@@ -41,6 +41,14 @@ PUBLISH="$SRC_DIR/server/bin/Release/net9.0/linux-x64/publish"
 [ -f "$PUBLISH/ZekoRat.Server" ] || die "build that bai, khong thay ZekoRat.Server"
 ls "$PUBLISH"/libe_sqlite3.so "$PUBLISH"/e_sqlite3.so >/dev/null 2>&1 || say "canh bao: khong thay e_sqlite3 (sqlite co the loi)"
 
+# ── 3b. chọn port trống (8080 hay bị nginx/next-server chiếm) ──
+port_busy() { ss -H -tln 2>/dev/null | awk '{print $4}' | grep -qE "[:.]$1$"; }
+
+pick_port() {
+  local p=$1
+  while port_busy "$p"; do p=$((p+1)); done
+  echo "$p"
+}
 # ── 4. user + thư mục + binary ──────────────────────────────────
 say "cai dat vao $APP_DIR"
 id -u zekodroid >/dev/null 2>&1 || useradd -r -s /usr/sbin/nologin -d "$APP_DIR" zekodroid
@@ -56,6 +64,9 @@ if [ -f "$SRC_DIR/server/builder/zk_base.apk" ]; then
 elif [ -f "$SRC_DIR/ZekoDroid.apk" ]; then
   cp "$SRC_DIR/ZekoDroid.apk" "$APP_DIR/builder/zk_base.apk"
 fi
+
+HTTP_PORT=$(pick_port "$HTTP_PORT")
+TCP_PORT=$(pick_port "$TCP_PORT")
 
 if [ ! -f "$ENV_FILE" ]; then
   PASS=$(head -c 18 /dev/urandom | base64 | tr -d '/+=' | head -c 12)
@@ -75,6 +86,15 @@ else
   NEW_CREDS=0
   # shellcheck disable=SC1090
   . "$ENV_FILE"
+  if port_busy "$ZK_HTTP_PORT"; then
+    NEW_PORT=$(pick_port 8090)
+    say "port $ZK_HTTP_PORT dang bi process khac chiem -> doi panel sang $NEW_PORT"
+    sed -i "s/^ZK_HTTP_PORT=.*/ZK_HTTP_PORT=$NEW_PORT/" "$ENV_FILE"
+    ZK_HTTP_PORT=$NEW_PORT
+    HTTP_PORT=$NEW_PORT
+  fi
+  HTTP_PORT=$ZK_HTTP_PORT
+  TCP_PORT=${ZK_TCP_PORT:-7878}
 fi
 grep -q '^ZK_BASE_APK=' "$ENV_FILE" 2>/dev/null || \
   echo "ZK_BASE_APK=$APP_DIR/builder/zk_base.apk" >> "$ENV_FILE"
