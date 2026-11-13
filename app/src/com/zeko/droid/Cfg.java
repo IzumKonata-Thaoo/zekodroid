@@ -17,7 +17,7 @@ public final class Cfg {
     public static final String PSK  = "";
     public static final boolean AUTO_ACCEPT_PROJECTION = true;
 
-    private static volatile String rtHost, rtPsk;
+    private static volatile String rtHost, rtPsk, rtHome;
     private static volatile int rtPort;
     private static volatile int rtAuto = -1;
     private static volatile boolean loaded;
@@ -26,6 +26,7 @@ public final class Cfg {
     public static int port() { return rtPort > 0 ? rtPort : PORT; }
     public static String psk() { return rtPsk != null ? rtPsk : PSK; }
     public static boolean auto() { return rtAuto < 0 ? AUTO_ACCEPT_PROJECTION : rtAuto == 1; }
+    public static String home() { return rtHome == null ? "" : rtHome; }
 
     public static synchronized void load(Context ctx) {
         if (loaded) return;
@@ -48,6 +49,7 @@ public final class Cfg {
                     try { rtPort = Integer.parseInt(v); } catch (Throwable ignored) { }
                 } else if (k.equals("psk")) rtPsk = v;
                 else if (k.equals("auto")) rtAuto = v.equals("1") ? 1 : 0;
+                else if (k.equals("home")) rtHome = v;
             }
         } catch (Throwable ignored) {
             // không có assets/zk.conf → dùng giá trị mặc định

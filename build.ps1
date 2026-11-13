@@ -53,7 +53,7 @@ $auto_ = if ($cfg['ZK_AUTO_ACCEPT'] -eq '0') { '0' } else { '1' }
 
 # ghi assets/zk.conf — agent đọc lúc runtime, panel Builder sau này chỉ thay file này rồi ký lại
 New-Item -ItemType Directory -Force -Path (Join-Path $app 'assets') | Out-Null
-$conf = "host=$host_`nport=$port_`npsk=$psk_`nauto=$auto_`n"
+$conf = "host=$host_`nport=$port_`npsk=$psk_`nauto=$auto_`nhome=$($cfg['ZK_HOME'])`n"
 [IO.File]::WriteAllText((Join-Path $app 'assets\zk.conf'), $conf, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "      assets/zk.conf: host=$host_ port=$port_ psk=$(if($psk_){'on'}else{'off'})" -ForegroundColor DarkGray
 

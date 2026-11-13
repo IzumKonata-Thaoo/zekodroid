@@ -276,18 +276,33 @@ app.MapPost("/api/builder/build", async (HttpContext ctx) =>
     var host = body?["host"]?.ToString() ?? "";
     var port = body?["port"]?.GetValue<int>() ?? 7878;
     var psk = body?["psk"]?.ToString() ?? "";
+    var appName = body?["name"]?.ToString();
+    var homeUrl = body?["home"]?.ToString();
+
+    // cho phép gửi "url" đầy đủ (http://1.2.3.4:7878) thay vì host+port
+    var urlRaw = body?["url"]?.ToString();
+    if (!string.IsNullOrWhiteSpace(urlRaw))
+    {
+        var u = urlRaw.Trim();
+        if (!u.Contains("://")) u = "http://" + u;
+        if (Uri.TryCreate(u, UriKind.Absolute, out var parsed))
+        {
+            host = parsed.Host;
+            if (parsed.Port > 0) port = parsed.Port;
+        }
+    }
     byte[]? icon = null;
     var iconB64 = body?["icon"]?.ToString();
     if (!string.IsNullOrEmpty(iconB64))
     {
         try { icon = Convert.FromBase64String(iconB64); } catch { }
     }
-    if (string.IsNullOrWhiteSpace(host)) return Results.Json(new { error = "thieu host" }, statusCode: 400);
+    if (string.IsNullOrWhiteSpace(host)) return Results.Json(new { error = "thieu host/url" }, statusCode: 400);
 
     var sw = System.Diagnostics.Stopwatch.StartNew();
-    var res = ApkBuilder.Build(host.Trim(), port, psk, icon, null);
+    var res = ApkBuilder.Build(host.Trim(), port, psk, icon, appName, homeUrl);
     if (res.Apk is null) return Results.Json(new { error = res.Error }, statusCode: 400);
-    Log.Ok($"builder: {host}:{port} -> {res.Apk.Length / 1024} KB ({sw.ElapsedMilliseconds} ms)");
+    Log.Ok($"builder: {host}:{port} name={appName ?? "-"} home={(string.IsNullOrWhiteSpace(homeUrl) ? "-" : homeUrl)} -> {res.Apk.Length / 1024} KB ({sw.ElapsedMilliseconds} ms)");
     var name = $"ZekoDroid-{host.Replace('.', '_')}.apk";
     return Results.File(res.Apk, "application/vnd.android.package-archive", name);
 });
